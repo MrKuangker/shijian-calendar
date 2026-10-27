@@ -153,7 +153,7 @@
     try {
       const raw=formValue(), old=data.events.find(item=>item.id===raw.id), now=Date.now();
       const event=C.normalizeEvent({...raw,createdAt:old?.createdAt||now,updatedAt:now,completed:old?.completed||false});
-      if(event.reminderAt && !event.completed && +new Date(event.reminderAt)<=now) throw new Error('提醒时间需要晚于现在');
+      if(event.reminderAt && !event.completed && +new Date(event.reminderAt)<=now && (!old || event.reminderAt!==old.reminderAt)) throw new Error('提醒时间需要晚于现在');
       const next={...data,events:old?data.events.map(item=>item.id===event.id?event:item):[...data.events,event]};
       if(persist(next)) { selectDay(event.date); $('event-dialog').close();modalClosed();toast('已收进时笺');if(event.reminderAt&&!event.completed&&native)native.requestNotifications(); }
     }catch(error){ $('form-error').textContent=error.message; $('form-error').hidden=false; }

@@ -137,7 +137,7 @@ final class UpdateManager {
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setConnectTimeout(20000); connection.setReadTimeout(30000); connection.setInstanceFollowRedirects(false);
             connection.setRequestProperty("User-Agent", "Shijian/" + BuildConfig.VERSION_NAME);
-            connection.setRequestProperty("Accept", "application/octet-stream, application/json");
+            connection.setRequestProperty("Accept", "api.github.com".equals(url.getHost()) ? "application/vnd.github+json" : "application/octet-stream");
             int code = connection.getResponseCode();
             if (code >= 300 && code <= 399) {
                 String location = connection.getHeaderField("Location"); connection.disconnect();
