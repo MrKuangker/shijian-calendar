@@ -9,7 +9,7 @@ on:
 
 concurrency:
   group: android-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -33,6 +33,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - uses: android-actions/setup-android@v3
       - name: Install SDK packages
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - name: Set monotonic app version
@@ -43,6 +44,11 @@ jobs:
           echo "APP_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Build and lint Android app
         run: gradle --no-daemon assembleDebug assembleDebugAndroidTest lintDebug
+      - name: Enable emulator acceleration on the temporary runner
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       - name: Test actual Android storage and WebView
         uses: reactivecircus/android-emulator-runner@v2
         with:
