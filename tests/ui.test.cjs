@@ -1,0 +1,56 @@
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const fs = require('node:fs');
+const { spawn } = require('node:child_process');
+
+(async()=>{
+  const server=spawn(process.execPath,[path.resolve(__dirname,'../scripts/preview.cjs')],{env:{...process.env,PORT:'0'},windowsHide:true});
+  const base=await new Promise((resolve,reject)=>{server.stdout.on('data',data=>{const match=String(data).match(/http:\/\/127\.0\.0\.1:\d+/);if(match)resolve(match[0]);});server.on('error',reject);});
+  const browser=await chromium.launch({channel:'msedge',headless:true,args:['--no-proxy-server']});
+  const context=await browser.newContext({viewport:{width:390,height:844},locale:'zh-CN',timezoneId:'Asia/Shanghai',hasTouch:true,isMobile:true,reducedMotion:'reduce'});
+  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const out=path.resolve(__dirname,'../work/screenshots');fs.mkdirSync(out,{recursive:true});
+  const go = async name=>{await page.locator(`.bottom-nav [data-page="${name}"]`).click();};
+  try{
+    await page.goto(base);await page.locator('#month-grid .day').last().waitFor();
+    assert.equal(await page.locator('#month-grid .day').count(),42);
+    assert.equal(await page.locator('body').evaluate(el=>el.scrollWidth>window.innerWidth),false);
+    await page.screenshot({path:path.join(out,'01-calendar-empty.png'),fullPage:true});
+    await page.locator('#add-event').click();
+    await page.locator('#event-title').fill('论文阶段汇报');await page.locator('#event-content').fill('整理实验结果，准备汇报。');
+    await page.locator('#event-deadline').fill('2026-11-03T18:00');await page.locator('#event-category').selectOption('study');await page.locator('#event-priority').selectOption('important');
+    await page.screenshot({path:path.join(out,'02-editor.png'),fullPage:true});
+    await page.locator('#event-form button[type="submit"]').click();await page.locator('#day-events .event-card').waitFor();
+    assert.equal(await page.locator('#day-events .event-title').innerText(),'论文阶段汇报');
+    await page.reload();await page.locator('#day-events .event-card').waitFor();assert.equal(await page.locator('#day-events .event-card').count(),1);
+    await page.locator('#add-event').click();await page.locator('#event-content').fill('只写一段心情也可以。');await page.locator('#event-form button[type="submit"]').click();
+    assert.equal(await page.locator('#day-events .event-card').count(),2);
+    await page.screenshot({path:path.join(out,'03-calendar-populated.png'),fullPage:true});
+    await page.locator('#day-events .event-card').first().locator('[data-action="complete"]').click();
+    assert.equal(await page.locator('#day-events .event-card.completed').count(),1);
+    await go('agenda');await page.locator('[data-filter="all"]').click();
+    await page.locator('#search').fill('阶段');assert.equal(await page.locator('#agenda-events .event-card').count(),1);
+    await page.locator('#search').fill('<script>');assert.equal(await page.locator('#agenda-events .event-card').count(),0);
+    await page.locator('#search').fill('');await page.screenshot({path:path.join(out,'04-agenda.png'),fullPage:true});
+    await go('calendar');await page.locator('#day-events .event-open').first().click();
+    await page.locator('#delete-event').click();await page.locator('#confirm-ok').click();
+    assert.equal(await page.locator('#day-events .event-card').count(),1);await page.locator('#toast button').click();assert.equal(await page.locator('#day-events .event-card').count(),2);
+    await go('settings');await page.locator('#week-start').selectOption('sunday');await go('calendar');assert.equal(await page.locator('#weekdays span').first().innerText(),'日');
+    await go('settings');await page.screenshot({path:path.join(out,'05-settings.png'),fullPage:true});
+    const downloadPromise=page.waitForEvent('download');await page.locator('#export-data').click();const download=await downloadPromise;const backup=path.join(out,'test-backup.json');await download.saveAs(backup);
+    const saved=JSON.parse(fs.readFileSync(backup,'utf8'));assert.equal(saved.events.length,2);
+    // Malformed imports must leave every local record intact.
+    await page.locator('#import-file').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{"schemaVersion":1,"events":[{"date":"wrong"}]}')});
+    assert.match(await page.locator('#toast').innerText(),/导入失败/);
+    await page.locator('#import-file').setInputFiles(backup);await page.locator('#confirm-ok').click();assert.match(await page.locator('#toast').innerText(),/现有 2 件事项/);
+    await page.locator('#theme').selectOption('dark');await go('calendar');assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');await page.screenshot({path:path.join(out,'06-dark.png'),fullPage:true});
+    await go('settings');await page.locator('#theme').selectOption('light');await go('calendar');
+    await page.locator('#open-date').click();await page.locator('#jump-date').fill('2024-02-29');await page.locator('#jump-form button[type="submit"]').click();assert.match(await page.locator('#selected-title').innerText(),/2月29日/);
+    await page.locator('#next-month').click();assert.match(await page.locator('#month-title').innerText(),/2024 年 03 月/);
+    await page.locator('#go-today').click();
+    await page.setViewportSize({width:320,height:740});assert.equal(await page.locator('body').evaluate(el=>el.scrollWidth>window.innerWidth),false);await page.screenshot({path:path.join(out,'07-small-phone.png'),fullPage:true});
+    await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:path.join(out,'08-desktop.png'),fullPage:true});
+    assert.deepEqual(errors,[]);console.log('UI checks passed: persistence, content-only entry, completion, search, deletion/undo, backup merge, invalid import, themes, leap dates and responsive layouts.');
+  }finally{await browser.close();server.kill();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

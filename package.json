@@ -1,0 +1,12 @@
+{
+  "name": "shijian-calendar",
+  "private": true,
+  "version": "1.0.0",
+  "description": "时笺 · Offline Android calendar and journal",
+  "scripts": {
+    "test": "node --test tests/core.test.cjs",
+    "preview": "node scripts/preview.cjs",
+    "test:ui": "node tests/ui.test.cjs"
+  },
+  "devDependencies": { "playwright": "1.58.2" }
+}

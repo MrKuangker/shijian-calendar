@@ -1,0 +1,29 @@
+plugins { id 'com.android.application' }
+def appVersion = new Properties()
+rootProject.file('version.properties').withInputStream { appVersion.load(it) }
+android {
+    namespace 'com.mrkuangker.shijian'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.mrkuangker.shijian'
+        minSdk 26
+        targetSdk 34
+        testInstrumentationRunner 'com.mrkuangker.shijian.SmokeInstrumentation'
+        versionCode (project.findProperty('appVersionCode') ?: appVersion.versionCode).toInteger()
+        versionName project.findProperty('appVersionName') ?: appVersion.versionName
+        buildConfigField 'String', 'GITHUB_REPO', '"MrKuangker/shijian-calendar"'
+    }
+    signingConfigs {
+        release {
+            if (System.getenv('ANDROID_KEYSTORE_PATH')) {
+                storeFile file(System.getenv('ANDROID_KEYSTORE_PATH'))
+                storePassword System.getenv('ANDROID_STORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
+    buildFeatures { buildConfig true }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+}

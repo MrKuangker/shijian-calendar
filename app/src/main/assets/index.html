@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f7f2">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>时笺 · 日有所记</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="core.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#calendar" aria-label="时笺首页"><span class="brand-icon" data-icon="book"></span><span>时笺<small>日有所记 · 心有所安</small></span></a>
+      <nav class="desktop-nav" aria-label="主导航"><button data-page="calendar" class="active"><i data-icon="calendar"></i>我的日历</button><button data-page="agenda"><i data-icon="checklist"></i>事项清单</button><button data-page="settings"><i data-icon="settings"></i>设置与备份</button></nav>
+      <div class="side-note"><span>留一点空白，</span><span>给正在发生的生活。</span><i data-icon="sprout"></i></div>
+      <div class="local-label"><i data-icon="shield"></i>安心记录，数据留在本机</div>
+    </aside>
+    <main>
+      <header class="mobile-brand"><a href="#calendar" class="brand"><span class="brand-icon" data-icon="book"></span><span>时笺</span></a><span class="brand-motto">日有所记，心有所安</span></header>
+      <section id="page-calendar" class="page">
+        <div class="page-heading"><div><p class="eyebrow">把日子，慢慢写好</p><h1 id="month-title"></h1></div><button class="icon-button" id="open-date" aria-label="跳转到日期"><i data-icon="calendar-search"></i></button></div>
+        <div class="month-summary" id="month-summary"></div>
+        <div class="calendar-layout">
+          <section class="calendar-card" aria-label="月历">
+            <div class="calendar-toolbar"><span id="month-en" class="overline"></span><div><button class="icon-button" id="prev-month" aria-label="上个月"><i data-icon="chevron-left"></i></button><button id="go-today" class="today-button">今天</button><button class="icon-button" id="next-month" aria-label="下个月"><i data-icon="chevron-right"></i></button></div></div>
+            <div class="weekdays" id="weekdays"></div><div class="month-grid" id="month-grid" role="grid" aria-label="选择日期"></div>
+            <div class="calendar-legend"><span><b class="dot life"></b>生活</span><span><b class="dot work"></b>工作</span><span><b class="dot study"></b>学习</span><span><b class="dot other"></b>其他</span></div>
+          </section>
+          <section class="day-panel"><div class="day-heading"><div><p id="selected-weekday" class="eyebrow"></p><h2 id="selected-title"></h2></div><button id="add-event" class="add-button" aria-label="添加事项"><i data-icon="plus"></i><span>记一件事</span></button></div><div id="day-events"></div></section>
+        </div>
+      </section>
+      <section id="page-agenda" class="page" hidden>
+        <div class="page-heading"><div><p class="eyebrow">一件件来，就很好</p><h1>事项清单<span class="heading-dot">.</span></h1></div><button class="icon-button primary-icon" id="agenda-add" aria-label="添加事项"><i data-icon="plus"></i></button></div>
+        <label class="search-field"><i data-icon="search"></i><input id="search" type="search" placeholder="搜索事件名或内容" maxlength="160" aria-label="搜索事项"></label>
+        <div class="filter-row" role="group" aria-label="完成状态筛选"><button class="filter active" data-filter="pending">待完成</button><button class="filter" data-filter="all">全部</button><button class="filter" data-filter="completed">已完成</button><button class="filter" data-filter="overdue">已逾期</button></div>
+        <div id="agenda-events"></div>
+      </section>
+      <section id="page-settings" class="page" hidden>
+        <div class="page-heading"><div><p class="eyebrow">让记录，更合心意</p><h1>我的时笺<span class="heading-dot">.</span></h1></div><i class="settings-sprout" data-icon="sprout"></i></div>
+        <div class="profile-card"><div class="profile-mark" data-icon="book"></div><div><h2>日有所记，心有所安</h2><p id="profile-count">每一个平凡日子，都值得被记住。</p></div></div>
+        <h3 class="section-label">使用偏好</h3><div class="settings-group">
+          <label class="settings-row"><span><i data-icon="calendar"></i>每周起始日</span><select id="week-start" aria-label="每周起始日"><option value="monday">星期一</option><option value="sunday">星期日</option></select></label>
+          <label class="settings-row"><span><i data-icon="sun"></i>界面外观</span><select id="theme" aria-label="界面外观"><option value="light">明亮</option><option value="dark">深色</option><option value="system">跟随系统</option></select></label>
+          <button class="settings-row" id="notification-settings"><span><i data-icon="bell"></i>提醒权限</span><span class="row-detail">管理<i data-icon="chevron-right"></i></span></button>
+        </div>
+        <h3 class="section-label">记录与备份</h3><div class="settings-group"><button class="settings-row" id="export-data"><span><i data-icon="download"></i>导出备份</span><span class="row-detail">JSON 文件<i data-icon="chevron-right"></i></span></button><button class="settings-row" id="import-data"><span><i data-icon="upload"></i>导入备份</span><span class="row-detail">合并已有记录<i data-icon="chevron-right"></i></span></button></div>
+        <p class="settings-help">记录保存在这台设备上。建议定期导出备份，卸载或清除应用数据前请先备份。</p>
+        <h3 class="section-label">版本更新</h3><div class="settings-group"><div class="settings-row"><span><i data-icon="info"></i>当前版本</span><span class="row-detail" id="current-version">1.0.0</span></div><button class="settings-row" id="check-update"><span><i data-icon="refresh"></i>检查更新</span><span class="row-detail">GitHub<i data-icon="chevron-right"></i></span></button><button class="settings-row" id="open-repo"><span><i data-icon="github"></i>项目仓库</span><i data-icon="external"></i></button></div>
+        <div id="update-status" class="update-status" role="status" hidden></div><div class="settings-footer">时笺 <span>·</span> 认真生活，从容记录</div>
+      </section>
+    </main>
+  </div>
+  <nav class="bottom-nav" aria-label="主导航"><button data-page="calendar" class="active"><i data-icon="calendar"></i><span>日历</span></button><button data-page="agenda"><i data-icon="checklist"></i><span>事项</span></button><button data-page="settings"><i data-icon="settings"></i><span>我的</span></button></nav>
+  <dialog id="event-dialog" class="sheet"><form id="event-form"><div class="sheet-handle"></div><header class="sheet-heading"><div><p class="eyebrow" id="editor-date"></p><h2 id="editor-title">记一件事</h2></div><button type="button" class="icon-button close-editor" aria-label="关闭编辑"><i data-icon="x"></i></button></header>
+    <input type="hidden" id="event-id"><label class="field title-field"><span>事件名 <small>选填</small></span><input id="event-title" maxlength="160" placeholder="给这件事起个名字" autocomplete="off"></label><label class="field"><span>内容 <small>选填</small></span><textarea id="event-content" rows="3" maxlength="20000" placeholder="想做的、要记的，都写在这里…"></textarea></label>
+    <div class="field-pair"><label class="field"><span>记录日期</span><input type="date" id="event-date" min="1900-01-01" max="2199-12-31" required></label><label class="field"><span>事项时间 <small>选填</small></span><input type="time" id="event-time"></label></div>
+    <div class="field-pair"><label class="field"><span>分类</span><select id="event-category"><option value="life">生活</option><option value="work">工作</option><option value="study">学习</option><option value="other">其他</option></select></label><label class="field"><span>优先级</span><select id="event-priority"><option value="normal">普通</option><option value="important">重要</option><option value="urgent">紧急</option></select></label></div>
+    <label class="field"><span><i data-icon="flag"></i>截止时间 DDL <small>选填</small></span><input type="datetime-local" id="event-deadline" min="1900-01-01T00:00" max="2199-12-31T23:59"></label>
+    <label class="field"><span><i data-icon="bell"></i>提醒时间 <small>选填</small></span><input type="datetime-local" id="event-reminder" min="1900-01-01T00:00" max="2199-12-31T23:59"></label>
+    <p class="form-help">事件名和内容至少写一项，其余按需填写。提醒可能受系统省电策略影响。</p><p id="form-error" class="form-error" role="alert" hidden></p>
+    <footer class="sheet-footer"><button type="button" id="delete-event" class="text-button danger" hidden><i data-icon="trash"></i>删除</button><button type="button" class="secondary-button close-editor">取消</button><button type="submit" class="primary-button">保存事项<i data-icon="arrow-right"></i></button></footer>
+  </form></dialog>
+  <dialog id="date-dialog" class="small-dialog"><form id="jump-form"><header><h2>跳转到日期</h2><button type="button" id="close-date" class="icon-button" aria-label="关闭日期选择"><i data-icon="x"></i></button></header><label class="field"><span>选择日期</span><input type="date" id="jump-date" min="1900-01-01" max="2199-12-31" required></label><button class="primary-button" type="submit">前往这一天<i data-icon="arrow-right"></i></button></form></dialog>
+  <dialog id="confirm-dialog" class="small-dialog"><div><header><h2 id="confirm-title"></h2></header><p id="confirm-body"></p><div class="confirm-actions"><button id="confirm-cancel" class="secondary-button">取消</button><button id="confirm-ok" class="primary-button">确认</button></div></div></dialog>
+  <input type="file" accept="application/json,.json" id="import-file" hidden><div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>

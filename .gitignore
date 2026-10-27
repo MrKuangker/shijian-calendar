@@ -1,0 +1,15 @@
+.private/
+.tools/
+.gradle/
+build/
+app/build/
+local.properties
+node_modules/
+work/
+dist/
+*.jks
+*.keystore
+*.apk
+*.apksig
+*.log
+.DS_Store

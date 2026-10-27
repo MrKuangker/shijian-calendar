@@ -1,0 +1,112 @@
+name: Build and release Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test calendar and backup logic
+        run: node --test tests/core.test.cjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Install SDK packages
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Set monotonic app version
+        shell: bash
+        run: |
+          BASE=$(sed -n 's/^versionName=//p' version.properties | tr -d '\r')
+          echo "APP_VERSION_NAME=${BASE%.*}.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "APP_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+      - name: Build and lint Android app
+        run: gradle --no-daemon assembleDebug assembleDebugAndroidTest lintDebug
+      - name: Test actual Android storage and WebView
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: default
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w com.mrkuangker.shijian.test/com.mrkuangker.shijian.SmokeInstrumentation | tee smoke-result.txt
+            grep -q SHIJIAN_SMOKE_PASS smoke-result.txt
+      - name: Check signing configuration
+        id: signing
+        if: github.event_name != 'pull_request'
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if test -n "$KEYSTORE"; then
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::APK release awaits repository signing secrets. Build and device checks completed.'
+          fi
+      - name: Restore release signing key
+        if: github.event_name != 'pull_request' && steps.signing.outputs.available == 'true'
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE" || { echo 'Release signing secret is missing'; exit 1; }
+          printf '%s' "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/shijian-release.p12"
+      - name: Build signed release
+        if: github.event_name != 'pull_request' && steps.signing.outputs.available == 'true'
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/shijian-release.p12
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: gradle --no-daemon assembleRelease lintRelease -PappVersionName="$APP_VERSION_NAME" -PappVersionCode="$APP_VERSION_CODE"
+      - name: Verify signature and create update metadata
+        if: github.event_name != 'pull_request' && steps.signing.outputs.available == 'true'
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/shijian.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/shijian.apk
+          python scripts/release-manifest.py --apk dist/shijian.apk --version-name "$APP_VERSION_NAME" --version-code "$APP_VERSION_CODE" --output dist/update.json
+          cd dist && sha256sum shijian.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request' && steps.signing.outputs.available == 'true'
+        with:
+          name: shijian-${{ env.APP_VERSION_NAME }}
+          path: dist/
+      - name: Publish GitHub release
+        if: github.event_name != 'pull_request' && steps.signing.outputs.available == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="v$APP_VERSION_NAME"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo 'This immutable version was already released. Push a new commit for another release.'
+            exit 0
+          fi
+          printf '时笺 %s\n\n日历记录、可选 DDL 与提醒、分类和优先级、搜索、完成状态、备份与应用内更新。\n\n本次提交：%s\n\n下载 shijian.apk 安装；已有用户可在「我的 → 检查更新」下载并覆盖安装。日程保存在本机。' "$APP_VERSION_NAME" "$GITHUB_SHA" > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$TAG" dist/shijian.apk dist/update.json dist/SHA256SUMS.txt --target "$GITHUB_SHA" --title "时笺 $APP_VERSION_NAME" --notes-file "$RUNNER_TEMP/release-notes.md" --latest
