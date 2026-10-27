@@ -1,6 +1,8 @@
 plugins { id 'com.android.application' }
 def appVersion = new Properties()
 rootProject.file('version.properties').withInputStream { appVersion.load(it) }
+def resolvedVersionCode = (project.findProperty('appVersionCode') ?: appVersion.getProperty('versionCode', '100')).toString().toInteger()
+def resolvedVersionName = (project.findProperty('appVersionName') ?: appVersion.getProperty('versionName', '1.0.0')).toString()
 android {
     namespace 'com.mrkuangker.shijian'
     compileSdk 35
@@ -9,8 +11,8 @@ android {
         minSdk 26
         targetSdk 34
         testInstrumentationRunner 'com.mrkuangker.shijian.SmokeInstrumentation'
-        versionCode (project.findProperty('appVersionCode') ?: appVersion.versionCode).toInteger()
-        versionName project.findProperty('appVersionName') ?: appVersion.versionName
+        versionCode = resolvedVersionCode
+        versionName = resolvedVersionName
         buildConfigField 'String', 'GITHUB_REPO', '"MrKuangker/shijian-calendar"'
     }
     signingConfigs {

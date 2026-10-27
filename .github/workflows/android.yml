@@ -17,6 +17,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: write
     steps:
@@ -30,9 +31,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.11.1'
+          cache-provider: basic
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
@@ -65,7 +67,18 @@ jobs:
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w com.mrkuangker.shijian.test/com.mrkuangker.shijian.SmokeInstrumentation | tee smoke-result.txt
+            adb logcat -d -s AndroidRuntime chromium > device-log.txt
+            adb exec-out screencap -p > device-screen.png
             grep -q SHIJIAN_SMOKE_PASS smoke-result.txt
+      - name: Save Android device verification evidence
+        if: always() && hashFiles('device-screen.png') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-device-check
+          path: |
+            smoke-result.txt
+            device-log.txt
+            device-screen.png
       - name: Check signing configuration
         id: signing
         if: github.event_name != 'pull_request'
@@ -117,5 +130,5 @@ jobs:
             echo 'This immutable version was already released. Push a new commit for another release.'
             exit 0
           fi
-          printf '时笺 %s\n\n日历记录、可选 DDL 与提醒、分类和优先级、搜索、完成状态、备份与应用内更新。\n\n本次提交：%s\n\n下载 shijian.apk 安装；已有用户可在「我的 → 检查更新」下载并覆盖安装。日程保存在本机。' "$APP_VERSION_NAME" "$GITHUB_SHA" > "$RUNNER_TEMP/release-notes.md"
+          printf '时笺 %s\n\n日历记录、可选 DDL 与提醒、分类和优先级、搜索、完成状态、备份与应用内更新。\n\n已通过日历逻辑、安卓构建与设备运行检查。\n\n下载 shijian.apk 安装；已有用户可在「我的 → 检查更新」下载并覆盖安装。日程保存在本机。' "$APP_VERSION_NAME" > "$RUNNER_TEMP/release-notes.md"
           gh release create "$TAG" dist/shijian.apk dist/update.json dist/SHA256SUMS.txt --target "$GITHUB_SHA" --title "时笺 $APP_VERSION_NAME" --notes-file "$RUNNER_TEMP/release-notes.md" --latest
