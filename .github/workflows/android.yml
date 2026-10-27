@@ -48,7 +48,11 @@ jobs:
           echo "APP_VERSION_NAME=${BASE%.*}.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
           echo "APP_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Build and lint Android app
-        run: gradle --no-daemon assembleDebug assembleDebugAndroidTest lintDebug
+        run: |
+          gradle --no-daemon assembleDebug assembleDebugAndroidTest lintDebug || {
+            cat app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt 2>/dev/null || true
+            exit 1
+          }
       - name: Enable emulator acceleration on the temporary runner
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

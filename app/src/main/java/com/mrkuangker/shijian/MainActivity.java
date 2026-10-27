@@ -112,8 +112,12 @@ public final class MainActivity extends Activity {
         @JavascriptInterface public void setTheme(boolean dark) {
             runOnUiThread(() -> {
                 int color = Color.parseColor(dark ? "#171e1b" : "#f6f7f2");
-                getWindow().setStatusBarColor(color); getWindow().setNavigationBarColor(color); web.setBackgroundColor(color);
-                getWindow().getDecorView().setSystemUiVisibility(dark ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+                getWindow().setStatusBarColor(color);
+                getWindow().setNavigationBarColor(Build.VERSION.SDK_INT >= 27 ? color : Color.parseColor("#326b5a"));
+                web.setBackgroundColor(color);
+                int flags = dark ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                if (Build.VERSION.SDK_INT >= 27 && !dark) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                getWindow().getDecorView().setSystemUiVisibility(flags);
             });
         }
         @JavascriptInterface public void exportData() {

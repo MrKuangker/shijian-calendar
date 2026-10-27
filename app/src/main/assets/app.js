@@ -179,13 +179,14 @@
     const url=URL.createObjectURL(new Blob([raw],{type:'application/json'})), a=document.createElement('a');a.href=url;a.download=`时笺备份-${C.dayKey(new Date())}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('备份已导出，请妥善保存');
   }
   function updateStatus(status) {
-    const el=$('update-status');el.hidden=false;$('check-update').disabled=status.state==='checking'||status.state==='downloading';
+    checking=status.state==='checking'||status.state==='downloading';
+    const el=$('update-status');el.hidden=false;$('check-update').disabled=checking;
     if(status.state==='checking'){el.textContent='正在向 GitHub 检查新版本…';checking=true;}
     else if(status.state==='latest'){el.textContent=`已是最新版本 ${status.versionName||''}。`;checking=false;}
     else if(status.state==='error'){el.textContent=status.message||'暂时无法检查更新，请稍后重试。';checking=false;}
     else if(status.state==='available'){
       updateInfo=status;checking=false;el.innerHTML=`<strong>有新版本 ${esc(status.versionName)}</strong><p>${esc(status.notes||'修复与体验改进')}</p><button class="primary-button" id="download-update">下载更新${icon('download')}</button>`;
-      $('download-update').onclick=()=>{if(native)native.downloadUpdate();else window.open(status.url,'_blank','noopener');};
+      $('download-update').onclick=()=>{if(native){updateStatus({state:'downloading',progress:-1});native.downloadUpdate();}else window.open(status.url,'_blank','noopener');};
     }else if(status.state==='downloading'){
       el.innerHTML=`<strong>正在下载更新 · ${status.progress>=0?Number(status.progress)+'%':'连接中'}</strong><p>下载后会校验安装包，请保持应用打开。</p><progress ${status.progress>=0?`value="${Number(status.progress)}"`:''} max="100"></progress>`;
     }else if(status.state==='ready'){

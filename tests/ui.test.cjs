@@ -38,6 +38,10 @@ const { spawn } = require('node:child_process');
     assert.equal(await page.locator('#day-events .event-card').count(),1);await page.locator('#toast button').click();assert.equal(await page.locator('#day-events .event-card').count(),2);
     await go('settings');await page.locator('#week-start').selectOption('sunday');await go('calendar');assert.equal(await page.locator('#weekdays span').first().innerText(),'日');
     await go('settings');await page.screenshot({path:path.join(out,'05-settings.png'),fullPage:true});
+    await page.route('https://api.github.com/repos/MrKuangker/shijian-calendar/releases/latest',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({tag_name:'v1.0.99',body:'体验改进 <script>不会执行</script>',assets:[{name:'shijian.apk',browser_download_url:'https://github.com/MrKuangker/shijian-calendar/releases/download/v1.0.99/shijian.apk'}]})}));
+    await page.locator('#check-update').click();await page.locator('#download-update').waitFor();assert.match(await page.locator('#update-status').innerText(),/1.0.99/);assert.equal(await page.locator('#update-status script').count(),0);
+    await page.evaluate(()=>window.ShijianApp.updateStatus({state:'downloading',progress:50}));assert.equal(await page.locator('#check-update').isDisabled(),true);
+    await page.evaluate(()=>window.ShijianApp.updateStatus({state:'error',message:'连接中断，请重试'}));assert.equal(await page.locator('#check-update').isEnabled(),true);
     const downloadPromise=page.waitForEvent('download');await page.locator('#export-data').click();const download=await downloadPromise;const backup=path.join(out,'test-backup.json');await download.saveAs(backup);
     const saved=JSON.parse(fs.readFileSync(backup,'utf8'));assert.equal(saved.events.length,2);
     // Malformed imports must leave every local record intact.
